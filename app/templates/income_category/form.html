@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '编辑' if category else '新增' }}收入类别 - 基础ERP资金管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{ '编辑' if category else '新增' }}收入类别</h2>
+    </div>
+    <div class="card-body">
+        <form id="categoryForm">
+            <div class="form-row">
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">类别编码</label>
+                        <input type="text" class="form-control" value="{{ category.code if category else new_code }}" disabled>
+                        <small style="color: #999;">编码自动生成，不可修改</small>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">类别名称 <span style="color: red;">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ category.name if category else '' }}" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <a href="{{ url_for('income_category.list_categories') }}" class="btn btn-secondary">返回</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('categoryForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var name = document.getElementById('name').value.trim();
+    if (!name) {
+        alert('类别名称不能为空');
+        return;
+    }
+    
+    var formData = new FormData();
+    formData.append('name', name);
+    
+    var url = "{{ url_for('income_category.edit_category', id=category.id) if category else url_for('income_category.create_category') }}";
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = data.redirect;
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('保存失败：' + error);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '编辑' if account else '新增' }}收款账户 - 基础ERP资金管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{ '编辑' if account else '新增' }}收款账户</h2>
+    </div>
+    <div class="card-body">
+        <form id="accountForm">
+            <div class="form-row">
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">账户编码</label>
+                        <input type="text" class="form-control" value="{{ account.code if account else new_code }}" disabled>
+                        <small style="color: #999;">编码自动生成，不可修改</small>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">账户名称 <span style="color: red;">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ account.name if account else '' }}" required>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <a href="{{ url_for('account.list_accounts') }}" class="btn btn-secondary">返回</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('accountForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var name = document.getElementById('name').value.trim();
+    if (!name) {
+        alert('账户名称不能为空');
+        return;
+    }
+    
+    var formData = new FormData();
+    formData.append('name', name);
+    
+    var url = "{{ url_for('account.edit_account', id=account.id) if account else url_for('account.create_account') }}";
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = data.redirect;
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('保存失败：' + error);
+    });
+});
+</script>
+{% endblock %}

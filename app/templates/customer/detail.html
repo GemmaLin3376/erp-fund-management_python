@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}客户详情 - 基础ERP资金管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">客户详情</h2>
+        <div>
+            <a href="{{ url_for('customer.edit_customer', id=customer.id) }}" class="btn btn-primary">编辑</a>
+            <button class="btn btn-danger" onclick="confirmDelete('{{ url_for('customer.delete_customer', id=customer.id) }}', '确定要删除客户 {{ customer.name }} 吗？')">删除</button>
+            <a href="{{ url_for('customer.list_customers') }}" class="btn btn-secondary">返回</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="detail-row">
+            <div class="detail-label">客户编码</div>
+            <div class="detail-value">{{ customer.code }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">客户名称</div>
+            <div class="detail-value">{{ customer.name }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">创建时间</div>
+            <div class="detail-value">{{ customer.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">更新时间</div>
+            <div class="detail-value">{{ customer.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

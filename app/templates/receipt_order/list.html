@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}收款单 - 基础ERP资金管理系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    .batch-bar {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        align-items: center;
+    }
+    
+    .batch-bar .btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    .select-col {
+        width: 40px;
+        text-align: center;
+    }
+    
+    .select-col input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    
+    tr.selected {
+        background-color: #e3f2fd !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">收款单</h2>
+        <a href="{{ url_for('receipt_order.create_order') }}" class="btn btn-primary">新增单据</a>
+    </div>
+    <div class="card-body">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" class="form-control" id="keyword" placeholder="单据编号/客户名称" value="{{ keyword }}">
+            <input type="text" class="form-control" id="income_order_code" placeholder="关联收入单编号" value="{{ income_order_code }}">
+            <select class="form-control" id="status">
+                <option value="">全部状态</option>
+                {% for s in statuses %}
+                <option value="{{ s }}" {{ 'selected' if s == status else '' }}>{{ s }}</option>
+                {% endfor %}
+            </select>
+            <input type="date" class="form-control" id="date_from" placeholder="开始日期" value="{{ date_from }}">
+            <input type="date" class="form-control" id="date_to" placeholder="结束日期" value="{{ date_to }}">
+            <button class="btn btn-primary" onclick="search()">查询</button>
+            <button class="btn btn-secondary" onclick="reset()">重置</button>
+        </div>
+        
+        <!-- 批量操作栏 -->
+        <div class="batch-bar">
+            <label style="margin-right: 10px;">
+                <input type="checkbox" id="selectAll" onclick="toggleSelectAll()"> 全选
+            </label>
+            <span id="selectedCount" style="color: #666; font-size: 13px; margin-right: 15px;">已选 0 条</span>
+            <button class="btn btn-success" onclick="batchAudit()">批量审核</button>
+            <button class="btn btn-warning" onclick="batchUnaudit()">批量反审核</button>
+            <button class="btn btn-danger" onclick="batchDelete()">批量删除</button>
+        </div>
+        
+        <!-- 数据表格 -->
+        <table class="table" id="orderTable">
+            <thead>
+                <tr>
+                    <th class="select-col"><input type="checkbox" id="headerSelectAll" onclick="toggleSelectAll()"></th>
+                    <th>单据状态</th>
+                    <th>单据编号</th>
+                    <th>单据日期</th>
+                    <th>客户名称</th>
+                    <th>收款账户</th>
+                    <th>单据总金额</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr data-id="{{ order.id }}" data-status="{{ order.status }}" data-code="{{ order.code }}">
+                    <td class="select-col"><input type="checkbox" class="row-checkbox" value="{{ order.id }}"></td>
+                    <td>
+                        {% if order.status == '未审核' %}
+                            <span class="badge badge-warning">{{ order.status }}</span>
+                        {% elif order.status == '已审核' %}
+                            <span class="badge badge-success">{{ order.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ order.code }}</td>
+                    <td>{{ order.order_date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ order.customer.name if order.customer else '' }}</td>
+                    <td>{{ order.account.name if order.account else '' }}</td>
+                    <td>{{ "%.2f"|format(order.total_amount) }}</td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="{{ url_for('receipt_order.view_order', id=order.id) }}" class="btn btn-sm btn-secondary">查看</a>
+                            {% if order.status == '未审核' %}
+                            <a href="{{ url_for('receipt_order.edit_order', id=order.id) }}" class="btn btn-sm btn-primary">编辑</a>
+                            <button class="btn btn-sm btn-success" onclick="auditOrder({{ order.id }}, '{{ order.code }}')">审核</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteOrder({{ order.id }}, '{{ order.code }}')">删除</button>
+                            {% else %}
+                            <button class="btn btn-sm btn-warning" onclick="unauditOrder({{ order.id }}, '{{ order.code }}')">反审核</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 30px;">暂无数据</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <div class="pagination">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('receipt_order.list_orders', page=pagination.prev_num, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">上一页</a>
+            {% else %}
+                <span class="disabled">上一页</span>
+            {% endif %}
+            
+            {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                {% if page_num %}
+                    {% if page_num == pagination.page %}
+                        <span class="current">{{ page_num }}</span>
+                    {% else %}
+                        <a href="{{ url_for('receipt_order.list_orders', page=page_num, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">{{ page_num }}</a>
+                    {% endif %}
+                {% else %}
+                    <span class="disabled">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if pagination.has_next %}
+                <a href="{{ url_for('receipt_order.list_orders', page=pagination.next_num, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">下一页</a>
+            {% else %}
+                <span class="disabled">下一页</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function search() {
+    var keyword = document.getElementById('keyword').value;
+    var income_order_code = document.getElementById('income_order_code').value;
+    var status = document.getElementById('status').value;
+    var date_from = document.getElementById('date_from').value;
+    var date_to = document.getElementById('date_to').value;
+    
+    var url = "{{ url_for('receipt_order.list_orders') }}?keyword=" + encodeURIComponent(keyword);
+    if (income_order_code) url += "&income_order_code=" + encodeURIComponent(income_order_code);
+    if (status) url += "&status=" + encodeURIComponent(status);
+    if (date_from) url += "&date_from=" + encodeURIComponent(date_from);
+    if (date_to) url += "&date_to=" + encodeURIComponent(date_to);
+    
+    window.location.href = url;
+}
+
+function reset() {
+    window.location.href = "{{ url_for('receipt_order.list_orders') }}";
+}
+
+document.getElementById('keyword').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        search();
+    }
+});
+
+// 全选/取消全选
+function toggleSelectAll() {
+    // 获取触发事件的复选框状态
+    var selectAll = document.getElementById('selectAll').checked;
+    var headerSelectAll = document.getElementById('headerSelectAll').checked;
+    
+    // 如果点击的是批量操作栏的全选
+    if (event && event.target && event.target.id === 'selectAll') {
+        document.getElementById('headerSelectAll').checked = selectAll;
+    }
+    // 如果点击的是表头的全选
+    else if (event && event.target && event.target.id === 'headerSelectAll') {
+        selectAll = headerSelectAll;
+        document.getElementById('selectAll').checked = selectAll;
+    }
+    // 如果都不是（直接调用函数），以批量操作栏的全选为准
+    else {
+        document.getElementById('headerSelectAll').checked = selectAll;
+    }
+    
+    var checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(function(cb) {
+        cb.checked = selectAll;
+        // 同步行选中样式
+        var tr = cb.closest('tr');
+        if (selectAll) {
+            tr.classList.add('selected');
+        } else {
+            tr.classList.remove('selected');
+        }
+    });
+    updateSelectedCount();
+}
+
+// 行复选框变化处理
+function handleRowCheckboxChange() {
+    var tr = this.closest('tr');
+    if (this.checked) {
+        tr.classList.add('selected');
+    } else {
+        tr.classList.remove('selected');
+    }
+    // 同步两个全选框状态
+    var allChecked = document.querySelectorAll('.row-checkbox').length === document.querySelectorAll('.row-checkbox:checked').length;
+    document.getElementById('selectAll').checked = allChecked;
+    document.getElementById('headerSelectAll').checked = allChecked;
+    updateSelectedCount();
+}
+
+// 绑定行复选框事件
+function bindRowCheckboxEvents() {
+    document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+        cb.removeEventListener('change', handleRowCheckboxChange);
+        cb.addEventListener('change', handleRowCheckboxChange);
+    });
+}
+
+// 初始化绑定
+bindRowCheckboxEvents();
+
+function updateSelectedCount() {
+    var count = document.querySelectorAll('.row-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = '已选 ' + count + ' 条';
+}
+
+// 获取选中的ID
+function getSelectedIds() {
+    var ids = [];
+    document.querySelectorAll('.row-checkbox:checked').forEach(function(cb) {
+        ids.push(cb.value);
+    });
+    return ids;
+}
+
+// 获取选中的行数据（包含状态）
+function getSelectedRows() {
+    var rows = [];
+    document.querySelectorAll('.row-checkbox:checked').forEach(function(cb) {
+        var tr = cb.closest('tr');
+        rows.push({
+            id: cb.value,
+            status: tr.dataset.status
+        });
+    });
+    return rows;
+}
+
+// 审核单据
+function auditOrder(id, code) {
+    if (confirm('确定要审核单据 ' + code + ' 吗？')) {
+        fetch("{{ url_for('receipt_order.audit_order', id=0) }}".replace('0', id), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('审核成功');
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+// 反审核单据
+function unauditOrder(id, code) {
+    if (confirm('确定要反审核单据 ' + code + ' 吗？')) {
+        fetch("{{ url_for('receipt_order.unaudit_order', id=0) }}".replace('0', id), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('反审核成功');
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+// 删除单据
+function deleteOrder(id, code) {
+    if (confirm('确定要删除单据 ' + code + ' 吗？')) {
+        fetch("{{ url_for('receipt_order.delete_order', id=0) }}".replace('0', id), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('删除成功');
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+// 批量审核
+function batchAudit() {
+    var ids = getSelectedIds();
+    if (ids.length === 0) {
+        alert('请选择要审核的记录');
+        return;
+    }
+    if (confirm('确定要审核选中的 ' + ids.length + ' 条记录吗？')) {
+        fetch("{{ url_for('receipt_order.batch_operation') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'audit', ids: ids })
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            window.location.reload();
+        });
+    }
+}
+
+// 批量反审核
+function batchUnaudit() {
+    var ids = getSelectedIds();
+    if (ids.length === 0) {
+        alert('请选择要反审核的记录');
+        return;
+    }
+    if (confirm('确定要反审核选中的 ' + ids.length + ' 条记录吗？')) {
+        fetch("{{ url_for('receipt_order.batch_operation') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'unaudit', ids: ids })
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            window.location.reload();
+        });
+    }
+}
+
+// 批量删除
+function batchDelete() {
+    var ids = getSelectedIds();
+    if (ids.length === 0) {
+        alert('请选择要删除的记录');
+        return;
+    }
+    if (confirm('确定要删除选中的 ' + ids.length + ' 条记录吗？')) {
+        fetch("{{ url_for('receipt_order.batch_operation') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', ids: ids })
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            window.location.reload();
+        });
+    }
+}
+</script>
+{% endblock %}

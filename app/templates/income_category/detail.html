@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}收入类别详情 - 基础ERP资金管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">收入类别详情</h2>
+        <div>
+            <a href="{{ url_for('income_category.edit_category', id=category.id) }}" class="btn btn-primary">编辑</a>
+            <button class="btn btn-danger" onclick="confirmDelete('{{ url_for('income_category.delete_category', id=category.id) }}', '确定要删除类别 {{ category.name }} 吗？')">删除</button>
+            <a href="{{ url_for('income_category.list_categories') }}" class="btn btn-secondary">返回</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="detail-row">
+            <div class="detail-label">类别编码</div>
+            <div class="detail-value">{{ category.code }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">类别名称</div>
+            <div class="detail-value">{{ category.name }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">创建时间</div>
+            <div class="detail-value">{{ category.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">更新时间</div>
+            <div class="detail-value">{{ category.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

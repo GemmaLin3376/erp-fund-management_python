@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h1 class="card-title">基础ERP资金管理系统</h1>
+    </div>
+    <div class="card-body">
+        <p style="color:#666; margin-bottom:30px;">按照以下流程完成资金收款业务操作</p>
+
+        <!-- 流程图 -->
+        <div style="display:flex; align-items:center; gap:0; margin-bottom:30px; flex-wrap:wrap; justify-content:center;">
+
+            <!-- Step 1: 基础资料 -->
+            <div style="display:flex; flex-direction:column; align-items:center; min-width:180px;">
+                <div style="background:#2c3e50; color:#fff; border-radius:8px; padding:20px 16px; width:160px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                    <div style="font-size:32px; margin-bottom:8px;">📋</div>
+                    <div style="font-size:14px; font-weight:bold;">第一步：基础资料</div>
+                </div>
+                <div style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap; justify-content:center;">
+                    <a href="{{ url_for('customer.list_customers') }}" class="btn btn-sm btn-secondary">客户管理</a>
+                    <a href="{{ url_for('income_category.list_categories') }}" class="btn btn-sm btn-secondary">收入类别管理</a>
+                    <a href="{{ url_for('account.list_accounts') }}" class="btn btn-sm btn-secondary">收款账户管理</a>
+                </div>
+            </div>
+
+            <!-- 箭头 -->
+            <div style="display:flex; align-items:center; padding:0 12px;">
+                <svg width="40" height="24" viewBox="0 0 40 24">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#2c3e50"/>
+                            <stop offset="100%" style="stop-color:#1a6b3a"/>
+                        </linearGradient>
+                    </defs>
+                    <line x1="0" y1="12" x2="32" y2="12" stroke="url(#grad1)" stroke-width="2"/>
+                    <polygon points="32,6 40,12 32,18" fill="#1a6b3a"/>
+                </svg>
+            </div>
+
+            <!-- Step 2: 其他收入单 -->
+            <div style="display:flex; flex-direction:column; align-items:center; min-width:180px;">
+                <div style="background:#1a6b3a; color:#fff; border-radius:8px; padding:20px 16px; width:160px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                    <div style="font-size:32px; margin-bottom:8px;">📄</div>
+                    <div style="font-size:14px; font-weight:bold;">第二步：其他收入单</div>
+                </div>
+                <div style="margin-top:12px;">
+                    <a href="{{ url_for('income_order.list_orders') }}" class="btn btn-sm btn-success">其他收入单</a>
+                </div>
+            </div>
+
+            <!-- 箭头 -->
+            <div style="display:flex; align-items:center; padding:0 12px;">
+                <svg width="40" height="24" viewBox="0 0 40 24">
+                    <defs>
+                        <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#1a6b3a"/>
+                            <stop offset="100%" style="stop-color:#8e4b00"/>
+                        </linearGradient>
+                    </defs>
+                    <line x1="0" y1="12" x2="32" y2="12" stroke="url(#grad2)" stroke-width="2"/>
+                    <polygon points="32,6 40,12 32,18" fill="#8e4b00"/>
+                </svg>
+            </div>
+
+            <!-- Step 3: 收款单 -->
+            <div style="display:flex; flex-direction:column; align-items:center; min-width:180px;">
+                <div style="background:#8e4b00; color:#fff; border-radius:8px; padding:20px 16px; width:160px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+                    <div style="font-size:32px; margin-bottom:8px;">💰</div>
+                    <div style="font-size:14px; font-weight:bold;">第三步：收款单</div>
+                </div>
+                <div style="margin-top:12px;">
+                    <a href="{{ url_for('receipt_order.list_orders') }}" class="btn btn-sm btn-warning">收款单</a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}其他收入单详情 - 基础ERP资金管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">其他收入单详情</h2>
+        <div>
+            <button class="btn btn-primary" onclick="copyOrder({{ order.id }})">复制</button>
+            {% if order.status == '未审核' %}
+            <a href="{{ url_for('income_order.edit_order', id=order.id) }}" class="btn btn-primary">编辑</a>
+            <button class="btn btn-success" onclick="auditOrder({{ order.id }})">审核</button>
+            <button class="btn btn-danger" onclick="deleteOrder({{ order.id }})">删除</button>
+            {% else %}
+            <button class="btn btn-warning" onclick="unauditOrder({{ order.id }})">反审核</button>
+            {% endif %}
+            <a href="{{ url_for('income_order.list_orders') }}" class="btn btn-secondary">返回</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 表头信息 -->
+        <div class="detail-section">
+            <h3>表头信息</h3>
+            <div class="detail-row">
+                <div class="detail-label">单据编号</div>
+                <div class="detail-value">{{ order.code }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">单据日期</div>
+                <div class="detail-value">{{ order.order_date.strftime('%Y-%m-%d') }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">客户名称</div>
+                <div class="detail-value">{{ order.customer.name if order.customer else '' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">单据状态</div>
+                <div class="detail-value">
+                    {% if order.status == '未审核' %}
+                        <span class="badge badge-warning">{{ order.status }}</span>
+                    {% elif order.status == '已审核' %}
+                        <span class="badge badge-success">{{ order.status }}</span>
+                    {% elif order.status == '部分收款' %}
+                        <span class="badge badge-info">{{ order.status }}</span>
+                    {% elif order.status == '全部收款' %}
+                        <span class="badge badge-primary">{{ order.status }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">单据总金额</div>
+                <div class="detail-value" style="font-weight: bold; color: #e74c3c;">{{ "%.2f"|format(order.total_amount) }}</div>
+            </div>
+            {% if order.status != '未审核' %}
+            <div class="detail-row">
+                <div class="detail-label">已收款金额</div>
+                <div class="detail-value" style="color: #27ae60;">{{ "%.2f"|format(order.received_amount) }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">未收款金额</div>
+                <div class="detail-value" style="color: #f39c12;">{{ "%.2f"|format(order.unreceived_amount) }}</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- 分录信息 -->
+        <div class="detail-section">
+            <h3>分录信息</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>收入类别</th>
+                        <th>金额</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td>{{ line.category.name if line.category else '' }}</td>
+                        <td>{{ "%.2f"|format(line.amount) }}</td>
+                        <td>{{ line.remark or '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="background-color: #f8f9fa; font-weight: bold;">
+                        <td style="text-align: right;">合计：</td>
+                        <td>{{ "%.2f"|format(order.total_amount) }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <!-- 收款明细 -->
+        {% if receipt_details and receipt_details|length > 0 %}
+        <div class="detail-section">
+            <h3>收款明细</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>收款单编号</th>
+                        <th>收款日期</th>
+                        <th>收款金额</th>
+                        <th>收款账户</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detail in receipt_details %}
+                    <tr>
+                        <td>{{ detail.receipt_code }}</td>
+                        <td>{{ detail.receipt_date }}</td>
+                        <td>{{ "%.2f"|format(detail.amount) }}</td>
+                        <td>{{ detail.account_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyOrder(id) {
+    if (confirm('确定要复制此单据吗？')) {
+        fetch('/income_order/' + id + '/copy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('复制成功，新单据编号：' + data.new_code);
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+function auditOrder(id) {
+    if (confirm('确定要审核此单据吗？')) {
+        fetch('/income_order/' + id + '/audit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('审核成功');
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+function unauditOrder(id) {
+    if (confirm('确定要反审核此单据吗？')) {
+        fetch('/income_order/' + id + '/unaudit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('反审核成功');
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+function deleteOrder(id) {
+    if (confirm('确定要删除此单据吗？')) {
+        fetch('/income_order/' + id + '/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('删除成功');
+                window.location.href = '/income_order/';
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

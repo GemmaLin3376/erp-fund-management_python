@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '编辑' if order else '新增' }}其他收入单 - 基础ERP资金管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{ '编辑' if order else '新增' }}其他收入单</h2>
+    </div>
+    <div class="card-body">
+        <form id="orderForm">
+            <!-- 表头信息 -->
+            <div class="form-row">
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">单据编号</label>
+                        <input type="text" class="form-control" value="{{ order.code if order else new_code }}" disabled>
+                        <small style="color: #999;">编码自动生成，不可修改</small>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">单据日期 <span style="color: red;">*</span></label>
+                        <input type="date" class="form-control" id="order_date" name="order_date" 
+                               value="{{ order.order_date.strftime('%Y-%m-%d') if order else today }}" required>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">客户 <span style="color: red;">*</span></label>
+                        <select class="form-control" id="customer_id" name="customer_id" required>
+                            <option value="">请选择客户</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}" {{ 'selected' if order and order.customer_id == customer.id else '' }}>
+                                {{ customer.code }} - {{ customer.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 分录表格 -->
+            <div class="lines-table">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3>分录信息</h3>
+                    <button type="button" class="btn btn-primary" onclick="addLine()">新增分录</button>
+                </div>
+                <table class="table" id="linesTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">收入类别 <span style="color: red;">*</span></th>
+                            <th style="width: 25%;">金额 <span style="color: red;">*</span></th>
+                            <th style="width: 25%;">备注</th>
+                            <th style="width: 10%;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="linesBody">
+                        {% if lines %}
+                            {% for line in lines %}
+                            <tr class="line-row">
+                                <td>
+                                    <select class="form-control category-select" required>
+                                        <option value="">请选择</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.id }}" {{ 'selected' if line.category_id == category.id else '' }}>
+                                            {{ category.code }} - {{ category.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control amount-input" step="0.01" min="0.01" 
+                                           value="{{ "%.2f"|format(line.amount) }}" required>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control remark-input" value="{{ line.remark or '' }}">
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="removeLine(this)">删除</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: #f8f9fa; font-weight: bold;">
+                            <td style="text-align: right;">合计：</td>
+                            <td id="totalAmount">0.00</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <a href="{{ url_for('income_order.list_orders') }}" class="btn btn-secondary">返回</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 分录行模板 -->
+<template id="lineTemplate">
+    <tr class="line-row">
+        <td>
+            <select class="form-control category-select" required>
+                <option value="">请选择</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.code }} - {{ category.name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control amount-input" step="0.01" min="0.01" value="" required>
+        </td>
+        <td>
+            <input type="text" class="form-control remark-input" value="">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeLine(this)">删除</button>
+        </td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 初始化时如果没有分录，添加一行
+if (document.querySelectorAll('.line-row').length === 0) {
+    addLine();
+}
+
+// 计算合计金额
+function calculateTotal() {
+    var total = 0;
+    document.querySelectorAll('.amount-input').forEach(function(input) {
+        var val = parseFloat(input.value) || 0;
+        total += val;
+    });
+    document.getElementById('totalAmount').textContent = total.toFixed(2);
+}
+
+// 添加分录行
+function addLine() {
+    var template = document.getElementById('lineTemplate');
+    var clone = template.content.cloneNode(true);
+    document.getElementById('linesBody').appendChild(clone);
+    
+    // 绑定金额变化事件
+    var newRow = document.getElementById('linesBody').lastElementChild;
+    newRow.querySelector('.amount-input').addEventListener('input', calculateTotal);
+}
+
+// 删除分录行
+function removeLine(btn) {
+    var rows = document.querySelectorAll('.line-row');
+    if (rows.length <= 1) {
+        alert('至少需要保留一条分录');
+        return;
+    }
+    btn.closest('tr').remove();
+    calculateTotal();
+}
+
+// 绑定已有金额输入框的事件
+document.querySelectorAll('.amount-input').forEach(function(input) {
+    input.addEventListener('input', calculateTotal);
+});
+
+// 初始化合计
+calculateTotal();
+
+// 表单提交
+document.getElementById('orderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var order_date = document.getElementById('order_date').value;
+    var customer_id = document.getElementById('customer_id').value;
+    
+    if (!customer_id) {
+        alert('请选择客户');
+        return;
+    }
+    
+    // 收集分录数据
+    var lines = [];
+    var rows = document.querySelectorAll('.line-row');
+    
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var category_id = row.querySelector('.category-select').value;
+        var amount = row.querySelector('.amount-input').value;
+        var remark = row.querySelector('.remark-input').value;
+        
+        if (!category_id || !amount) {
+            alert('请完善分录信息');
+            return;
+        }
+        
+        if (parseFloat(amount) <= 0) {
+            alert('金额必须大于0');
+            return;
+        }
+        
+        lines.push({
+            category_id: parseInt(category_id),
+            amount: parseFloat(amount),
+            remark: remark
+        });
+    }
+    
+    var data = {
+        order_date: order_date,
+        customer_id: parseInt(customer_id),
+        lines: lines
+    };
+    
+    var url = "{{ url_for('income_order.edit_order', id=order.id) if order else url_for('income_order.create_order') }}";
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = data.redirect;
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('保存失败：' + error);
+    });
+});
+</script>
+{% endblock %}

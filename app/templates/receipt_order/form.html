@@ -1,0 +1,717 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '编辑' if order else '新增' }}收款单 - 基础ERP资金管理系统{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 弹窗样式 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .modal-overlay.active {
+        display: flex;
+    }
+    
+    .modal-container {
+        background-color: #fff;
+        border-radius: 8px;
+        width: 800px;
+        max-width: 90%;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-title {
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+    }
+    
+    .modal-close:hover {
+        color: #333;
+    }
+    
+    .modal-tabs {
+        display: flex;
+        border-bottom: 1px solid #eee;
+        background-color: #f8f9fa;
+    }
+    
+    .modal-tab {
+        padding: 12px 24px;
+        cursor: pointer;
+        border: none;
+        background: none;
+        font-size: 14px;
+        color: #666;
+        border-bottom: 2px solid transparent;
+    }
+    
+    .modal-tab.active {
+        color: #3498db;
+        border-bottom-color: #3498db;
+        background-color: #fff;
+    }
+    
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
+    .source-order-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .source-order-table th,
+    .source-order-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .source-order-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+    
+    .source-order-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .source-order-table input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    
+    .source-order-row.selected {
+        background-color: #e3f2fd;
+    }
+    
+    /* 已选源单标签 */
+    .selected-sources {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 15px;
+        min-height: 36px;
+        padding: 8px;
+        border: 1px dashed #ddd;
+        border-radius: 4px;
+        background-color: #fafafa;
+    }
+    
+    .source-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background-color: #e3f2fd;
+        border: 1px solid #2196f3;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #1976d2;
+    }
+    
+    .source-tag .remove {
+        cursor: pointer;
+        font-weight: bold;
+        color: #666;
+    }
+    
+    .source-tag .remove:hover {
+        color: #e74c3c;
+    }
+    
+    .select-source-btn {
+        padding: 8px 16px;
+        background-color: #f0f0f0;
+        border: 1px dashed #999;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #666;
+        font-size: 14px;
+    }
+    
+    .select-source-btn:hover {
+        background-color: #e0e0e0;
+        border-color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{ '编辑' if order else '新增' }}收款单</h2>
+    </div>
+    <div class="card-body">
+        <form id="orderForm">
+            <!-- 表头信息 -->
+            <div class="form-row">
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">单据编号</label>
+                        <input type="text" class="form-control" value="{{ order.code if order else new_code }}" disabled>
+                        <small style="color: #999;">编码自动生成，不可修改</small>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">单据日期 <span style="color: red;">*</span></label>
+                        <input type="date" class="form-control" id="order_date" name="order_date" 
+                               value="{{ order.order_date.strftime('%Y-%m-%d') if order else today }}" required>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">客户 <span style="color: red;">*</span></label>
+                        <select class="form-control" id="customer_id" name="customer_id" required onchange="onCustomerChange()">
+                            <option value="">请选择客户</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}" {{ 'selected' if order and order.customer_id == customer.id else '' }}>
+                                {{ customer.code }} - {{ customer.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label class="form-label">收款账户 <span style="color: red;">*</span></label>
+                        <select class="form-control" id="account_id" name="account_id" required>
+                            <option value="">请选择账户</option>
+                            {% for account in accounts %}
+                            <option value="{{ account.id }}" {{ 'selected' if order and order.account_id == account.id else '' }}>
+                                {{ account.code }} - {{ account.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 分录表格 -->
+            <div class="lines-table">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3>分录信息</h3>
+                    <button type="button" class="btn btn-primary" id="selectSourceBtn" onclick="openSourceModal()" disabled>选择源单</button>
+                </div>
+                
+                <!-- 已选源单标签 -->
+                <div class="selected-sources" id="selectedSources">
+                    <span style="color: #999; font-size: 13px;">请先选择客户，然后点击"选择源单"按钮</span>
+                </div>
+                
+                <table class="table" id="linesTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">源单编号</th>
+                            <th style="width: 20%;">单据日期</th>
+                            <th style="width: 20%;">未收款金额</th>
+                            <th style="width: 20%;">本次收款 <span style="color: red;">*</span></th>
+                            <th style="width: 10%;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="linesBody">
+                        {% if order %}
+                            {% for line in order.lines.all() %}
+                            <tr class="line-row" data-income-order-id="{{ line.income_order_id }}">
+                                <td class="source-code">{{ line.income_order.code if line.income_order else '已删除' }}</td>
+                                <td class="source-date">{{ line.income_order.order_date.strftime('%Y-%m-%d') if line.income_order else '-' }}</td>
+                                <td class="unreceived-amount">-</td>
+                                <td>
+                                    <input type="number" class="form-control amount-input" step="0.01" min="0.01" 
+                                           value="{{ "%.2f"|format(line.amount) }}" required>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="removeLine(this)">删除</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: #f8f9fa; font-weight: bold;">
+                            <td style="text-align: right;">合计：</td>
+                            <td></td>
+                            <td></td>
+                            <td id="totalAmount">0.00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-primary">保存</button>
+                <a href="{{ url_for('receipt_order.list_orders') }}" class="btn btn-secondary">返回</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 选择源单弹窗 -->
+<div class="modal-overlay" id="sourceModal">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 class="modal-title">选择源单</h3>
+            <button class="modal-close" onclick="closeSourceModal()">&times;</button>
+        </div>
+        <div class="modal-tabs">
+            <button class="modal-tab active" data-tab="income">其他收入单</button>
+            <!-- 后续可在这里添加更多tab -->
+        </div>
+        <div class="modal-body">
+            <div class="search-bar" style="margin-bottom: 15px;">
+                <input type="text" class="form-control" id="sourceSearch" placeholder="搜索单据编号" style="width: 200px;">
+                <button class="btn btn-primary" onclick="searchSourceOrders()">搜索</button>
+            </div>
+            <table class="source-order-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
+                        <th>单据编号</th>
+                        <th>单据日期</th>
+                        <th>客户</th>
+                        <th>单据总金额</th>
+                        <th>审核状态</th>
+                        <th>已收款金额</th>
+                        <th>未收款金额</th>
+                        <th>收款状态</th>
+                    </tr>
+                </thead>
+                <tbody id="sourceOrderList">
+                    <!-- 动态加载 -->
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSourceModal()">取消</button>
+            <button class="btn btn-primary" onclick="confirmSourceSelection()">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 分录行模板 -->
+<template id="lineTemplate">
+    <tr class="line-row">
+        <td class="source-code"></td>
+        <td class="source-date"></td>
+        <td class="unreceived-amount">-</td>
+        <td>
+            <input type="number" class="form-control amount-input" step="0.01" min="0.01" value="" required>
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeLine(this)">删除</button>
+        </td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 可用的收入单列表
+var availableIncomeOrders = [];
+var selectedSourceIds = new Set();
+
+// 初始化
+{% if order %}
+// 编辑模式：加载客户对应的收入单
+loadIncomeOrders({{ order.customer_id }});
+// 收集已选中的源单ID
+document.querySelectorAll('.line-row').forEach(function(row) {
+    var incomeOrderId = row.dataset.incomeOrderId;
+    if (incomeOrderId) {
+        selectedSourceIds.add(parseInt(incomeOrderId));
+    }
+});
+updateSelectedSourcesDisplay();
+{% endif %}
+
+// 客户选择变化
+function onCustomerChange() {
+    var customerId = document.getElementById('customer_id').value;
+    var selectSourceBtn = document.getElementById('selectSourceBtn');
+    var selectedSourcesDiv = document.getElementById('selectedSources');
+    
+    // 清空分录和已选源单
+    document.getElementById('linesBody').innerHTML = '';
+    selectedSourceIds.clear();
+    
+    if (customerId) {
+        selectSourceBtn.disabled = false;
+        selectedSourcesDiv.innerHTML = '<span style="color: #666; font-size: 13px;">点击"选择源单"按钮添加收款明细</span>';
+        // 加载该客户的收入单
+        loadIncomeOrders(customerId);
+    } else {
+        selectSourceBtn.disabled = true;
+        selectedSourcesDiv.innerHTML = '<span style="color: #999; font-size: 13px;">请先选择客户，然后点击"选择源单"按钮</span>';
+    }
+    calculateTotal();
+}
+
+// 加载收入单列表
+function loadIncomeOrders(customerId) {
+    fetch("{{ url_for('income_order.api_available_orders') }}?customer_id=" + customerId)
+    .then(response => response.json())
+    .then(data => {
+        availableIncomeOrders = data;
+        
+        // 编辑模式：更新已存在分录的未收款金额显示
+        {% if order %}
+        document.querySelectorAll('.line-row').forEach(function(row) {
+            var incomeOrderId = row.dataset.incomeOrderId;
+            var order = availableIncomeOrders.find(o => o.id == incomeOrderId);
+            if (order) {
+                row.querySelector('.unreceived-amount').textContent = order.unreceived_amount.toFixed(2);
+                row.querySelector('.source-date').textContent = order.order_date;
+            }
+        });
+        {% endif %}
+    });
+}
+
+// 打开选择源单弹窗
+function openSourceModal() {
+    var customerId = document.getElementById('customer_id').value;
+    if (!customerId) {
+        alert('请先选择客户');
+        return;
+    }
+    
+    // 加载源单列表
+    loadSourceOrderList();
+    
+    document.getElementById('sourceModal').classList.add('active');
+}
+
+// 关闭选择源单弹窗
+function closeSourceModal() {
+    document.getElementById('sourceModal').classList.remove('active');
+}
+
+// 加载源单列表到弹窗
+function loadSourceOrderList() {
+    var tbody = document.getElementById('sourceOrderList');
+    tbody.innerHTML = '';
+    
+    availableIncomeOrders.forEach(function(order) {
+        var tr = document.createElement('tr');
+        tr.className = 'source-order-row';
+        tr.dataset.orderId = order.id;
+        
+        var isSelected = selectedSourceIds.has(order.id);
+        
+        tr.innerHTML = `
+            <td><input type="checkbox" value="${order.id}" ${isSelected ? 'checked' : ''}></td>
+            <td>${order.code}</td>
+            <td>${order.order_date}</td>
+            <td>${order.customer_name}</td>
+            <td>${order.total_amount.toFixed(2)}</td>
+            <td><span class="badge badge-success">${order.audit_status}</span></td>
+            <td style="color: #27ae60;">${order.received_amount.toFixed(2)}</td>
+            <td style="color: #f39c12;">${order.unreceived_amount.toFixed(2)}</td>
+            <td><span class="badge badge-info">${order.receipt_status}</span></td>
+        `;
+        
+        // 点击行选中/取消
+        tr.addEventListener('click', function(e) {
+            if (e.target.type !== 'checkbox') {
+                var checkbox = tr.querySelector('input[type="checkbox"]');
+                checkbox.checked = !checkbox.checked;
+            }
+            updateRowSelection(tr);
+        });
+        
+        // 复选框变化
+        tr.querySelector('input[type="checkbox"]').addEventListener('change', function() {
+            updateRowSelection(tr);
+        });
+        
+        if (isSelected) {
+            tr.classList.add('selected');
+        }
+        
+        tbody.appendChild(tr);
+    });
+}
+
+// 更新行选中状态
+function updateRowSelection(row) {
+    var checkbox = row.querySelector('input[type="checkbox"]');
+    var orderId = parseInt(row.dataset.orderId);
+    
+    if (checkbox.checked) {
+        row.classList.add('selected');
+    } else {
+        row.classList.remove('selected');
+    }
+}
+
+// 全选/取消全选
+document.getElementById('selectAll').addEventListener('change', function() {
+    var checkboxes = document.querySelectorAll('#sourceOrderList input[type="checkbox"]');
+    checkboxes.forEach(function(cb) {
+        cb.checked = this.checked;
+        updateRowSelection(cb.closest('tr'));
+    }.bind(this));
+});
+
+// 搜索源单
+function searchSourceOrders() {
+    var keyword = document.getElementById('sourceSearch').value.toLowerCase();
+    var rows = document.querySelectorAll('.source-order-row');
+    
+    rows.forEach(function(row) {
+        var code = row.cells[1].textContent.toLowerCase();
+        if (code.includes(keyword)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+// 确认选择源单
+function confirmSourceSelection() {
+    var checkboxes = document.querySelectorAll('#sourceOrderList input[type="checkbox"]:checked');
+    var newSelectedIds = new Set();
+    
+    checkboxes.forEach(function(cb) {
+        newSelectedIds.add(parseInt(cb.value));
+    });
+    
+    // 找出新增和删除的
+    var toAdd = [];
+    var toRemove = [];
+    
+    newSelectedIds.forEach(function(id) {
+        if (!selectedSourceIds.has(id)) {
+            var order = availableIncomeOrders.find(o => o.id === id);
+            if (order) toAdd.push(order);
+        }
+    });
+    
+    selectedSourceIds.forEach(function(id) {
+        if (!newSelectedIds.has(id)) {
+            toRemove.push(id);
+        }
+    });
+    
+    // 删除取消选中的
+    toRemove.forEach(function(id) {
+        var row = document.querySelector('.line-row[data-income-order-id="' + id + '"]');
+        if (row) row.remove();
+        selectedSourceIds.delete(id);
+    });
+    
+    // 添加新选中的
+    toAdd.forEach(function(order) {
+        addSourceLine(order);
+        selectedSourceIds.add(order.id);
+    });
+    
+    updateSelectedSourcesDisplay();
+    calculateTotal();
+    closeSourceModal();
+}
+
+// 添加源单分录行
+function addSourceLine(order) {
+    var template = document.getElementById('lineTemplate');
+    var clone = template.content.cloneNode(true);
+    var row = clone.querySelector('tr');
+    
+    row.dataset.incomeOrderId = order.id;
+    row.querySelector('.source-code').textContent = order.code;
+    row.querySelector('.source-date').textContent = order.order_date;
+    row.querySelector('.unreceived-amount').textContent = order.unreceived_amount.toFixed(2);
+    
+    // 默认收款金额为未收款金额
+    var amountInput = row.querySelector('.amount-input');
+    amountInput.value = order.unreceived_amount.toFixed(2);
+    amountInput.max = order.unreceived_amount;
+    
+    // 绑定金额变化事件
+    amountInput.addEventListener('input', calculateTotal);
+    
+    document.getElementById('linesBody').appendChild(row);
+}
+
+// 更新已选源单显示
+function updateSelectedSourcesDisplay() {
+    var container = document.getElementById('selectedSources');
+    
+    if (selectedSourceIds.size === 0) {
+        container.innerHTML = '<span style="color: #666; font-size: 13px;">点击"选择源单"按钮添加收款明细</span>';
+        return;
+    }
+    
+    var html = '';
+    selectedSourceIds.forEach(function(id) {
+        var order = availableIncomeOrders.find(o => o.id === id);
+        if (order) {
+            html += '<span class="source-tag">' + order.code + ' <span class="remove" onclick="removeSource(' + id + ')">&times;</span></span>';
+        }
+    });
+    container.innerHTML = html;
+}
+
+// 从标签移除源单
+function removeSource(id) {
+    var row = document.querySelector('.line-row[data-income-order-id="' + id + '"]');
+    if (row) row.remove();
+    selectedSourceIds.delete(id);
+    updateSelectedSourcesDisplay();
+    calculateTotal();
+}
+
+// 计算合计金额
+function calculateTotal() {
+    var total = 0;
+    document.querySelectorAll('.amount-input').forEach(function(input) {
+        var val = parseFloat(input.value) || 0;
+        total += val;
+    });
+    document.getElementById('totalAmount').textContent = total.toFixed(2);
+}
+
+// 删除分录行
+function removeLine(btn) {
+    var row = btn.closest('tr');
+    var incomeOrderId = parseInt(row.dataset.incomeOrderId);
+    if (incomeOrderId) {
+        selectedSourceIds.delete(incomeOrderId);
+        updateSelectedSourcesDisplay();
+    }
+    row.remove();
+    calculateTotal();
+}
+
+// 初始化合计
+calculateTotal();
+
+// 表单提交
+document.getElementById('orderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var order_date = document.getElementById('order_date').value;
+    var customer_id = document.getElementById('customer_id').value;
+    var account_id = document.getElementById('account_id').value;
+    
+    if (!customer_id) {
+        alert('请选择客户');
+        return;
+    }
+    
+    if (!account_id) {
+        alert('请选择收款账户');
+        return;
+    }
+    
+    // 收集分录数据
+    var lines = [];
+    var rows = document.querySelectorAll('.line-row');
+    
+    if (rows.length === 0) {
+        alert('请至少选择一条源单');
+        return;
+    }
+    
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var income_order_id = row.dataset.incomeOrderId;
+        var unreceived = parseFloat(row.querySelector('.unreceived-amount').textContent) || 0;
+        var amount = row.querySelector('.amount-input').value;
+        
+        if (!income_order_id || !amount) {
+            alert('请完善分录信息');
+            return;
+        }
+        
+        if (parseFloat(amount) <= 0) {
+            alert('金额必须大于0');
+            return;
+        }
+        
+        if (parseFloat(amount) > unreceived) {
+            alert('收款金额不能超过未收款金额');
+            return;
+        }
+        
+        lines.push({
+            income_order_id: parseInt(income_order_id),
+            amount: parseFloat(amount),
+            remark: ''
+        });
+    }
+    
+    var data = {
+        order_date: order_date,
+        customer_id: parseInt(customer_id),
+        account_id: parseInt(account_id),
+        lines: lines
+    };
+    
+    var url = "{{ url_for('receipt_order.edit_order', id=order.id) if order else url_for('receipt_order.create_order') }}";
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = data.redirect;
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('保存失败：' + error);
+    });
+});
+</script>
+{% endblock %}

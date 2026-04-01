@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}收入类别管理 - 基础ERP资金管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">收入类别管理</h2>
+        <a href="{{ url_for('income_category.create_category') }}" class="btn btn-primary">新增类别</a>
+    </div>
+    <div class="card-body">
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+            <input type="text" class="form-control" id="keyword" placeholder="类别编码/名称" value="{{ keyword }}">
+            <button class="btn btn-primary" onclick="search()">查询</button>
+            <button class="btn btn-secondary" onclick="reset()">重置</button>
+        </div>
+        
+        <!-- 数据表格 -->
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>类别编码</th>
+                    <th>类别名称</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for category in categories %}
+                <tr>
+                    <td>{{ category.code }}</td>
+                    <td>{{ category.name }}</td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="{{ url_for('income_category.view_category', id=category.id) }}" class="btn btn-sm btn-secondary">查看</a>
+                            <a href="{{ url_for('income_category.edit_category', id=category.id) }}" class="btn btn-sm btn-primary">编辑</a>
+                            <button class="btn btn-sm btn-danger" onclick="confirmDelete('{{ url_for('income_category.delete_category', id=category.id) }}', '确定要删除类别 {{ category.name }} 吗？')">删除</button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 30px;">暂无数据</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <div class="pagination">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('income_category.list_categories', page=pagination.prev_num, keyword=keyword) }}">上一页</a>
+            {% else %}
+                <span class="disabled">上一页</span>
+            {% endif %}
+            
+            {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                {% if page_num %}
+                    {% if page_num == pagination.page %}
+                        <span class="current">{{ page_num }}</span>
+                    {% else %}
+                        <a href="{{ url_for('income_category.list_categories', page=page_num, keyword=keyword) }}">{{ page_num }}</a>
+                    {% endif %}
+                {% else %}
+                    <span class="disabled">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if pagination.has_next %}
+                <a href="{{ url_for('income_category.list_categories', page=pagination.next_num, keyword=keyword) }}">下一页</a>
+            {% else %}
+                <span class="disabled">下一页</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function search() {
+    var keyword = document.getElementById('keyword').value;
+    window.location.href = "{{ url_for('income_category.list_categories') }}?keyword=" + encodeURIComponent(keyword);
+}
+
+function reset() {
+    window.location.href = "{{ url_for('income_category.list_categories') }}";
+}
+
+document.getElementById('keyword').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        search();
+    }
+});
+</script>
+{% endblock %}

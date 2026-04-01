@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}收款单详情 - 基础ERP资金管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">收款单详情</h2>
+        <div>
+            {% if order.status == '未审核' %}
+            <a href="{{ url_for('receipt_order.edit_order', id=order.id) }}" class="btn btn-primary">编辑</a>
+            <button class="btn btn-success" onclick="auditOrder({{ order.id }})">审核</button>
+            <button class="btn btn-danger" onclick="deleteOrder({{ order.id }})">删除</button>
+            {% else %}
+            <button class="btn btn-warning" onclick="unauditOrder({{ order.id }})">反审核</button>
+            {% endif %}
+            <a href="{{ url_for('receipt_order.list_orders') }}" class="btn btn-secondary">返回</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- 表头信息 -->
+        <div class="detail-section">
+            <h3>表头信息</h3>
+            <div class="detail-row">
+                <div class="detail-label">单据编号</div>
+                <div class="detail-value">{{ order.code }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">单据日期</div>
+                <div class="detail-value">{{ order.order_date.strftime('%Y-%m-%d') }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">客户名称</div>
+                <div class="detail-value">{{ order.customer.name if order.customer else '' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">收款账户</div>
+                <div class="detail-value">{{ order.account.name if order.account else '' }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">单据状态</div>
+                <div class="detail-value">
+                    {% if order.status == '未审核' %}
+                        <span class="badge badge-warning">{{ order.status }}</span>
+                    {% elif order.status == '已审核' %}
+                        <span class="badge badge-success">{{ order.status }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">单据总金额</div>
+                <div class="detail-value" style="font-weight: bold; color: #27ae60;">{{ "%.2f"|format(order.total_amount) }}</div>
+            </div>
+        </div>
+        
+        <!-- 分录信息 -->
+        <div class="detail-section">
+            <h3>分录信息</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>关联收入单</th>
+                        <th>收款金额</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in lines %}
+                    <tr>
+                        <td>{{ line.income_order.code if line.income_order else '已删除' }}</td>
+                        <td>{{ "%.2f"|format(line.amount) }}</td>
+                        <td>{{ line.remark or '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="background-color: #f8f9fa; font-weight: bold;">
+                        <td style="text-align: right;">合计：</td>
+                        <td>{{ "%.2f"|format(order.total_amount) }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function auditOrder(id) {
+    if (confirm('确定要审核此单据吗？审核后将反写收入单状态。')) {
+        fetch('/receipt_order/' + id + '/audit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('审核成功');
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+function unauditOrder(id) {
+    if (confirm('确定要反审核此单据吗？')) {
+        fetch('/receipt_order/' + id + '/unaudit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('反审核成功');
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+function deleteOrder(id) {
+    if (confirm('确定要删除此单据吗？')) {
+        fetch('/receipt_order/' + id + '/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('删除成功');
+                window.location.href = '/receipt_order/';
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
