@@ -33,6 +33,32 @@
     tr.selected {
         background-color: #e3f2fd !important;
     }
+    
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 400px;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+    }
+    
+    .table {
+        width: 100%;
+        min-width: 1000px;
+        border-collapse: collapse;
+        margin-bottom: 0;
+    }
+    
+    /* 固定表头 */
+    .table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fa;
+        z-index: 10;
+        border-top: none;
+    }
 </style>
 {% endblock %}
 
