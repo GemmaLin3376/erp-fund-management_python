@@ -12,7 +12,7 @@ bp = Blueprint('income_order', __name__)
 def list_orders():
     """其他收入单列表页"""
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
     keyword = request.args.get('keyword', '')
     status = request.args.get('status', '')
     date_from = request.args.get('date_from', '')
@@ -421,6 +421,40 @@ def batch_operation():
             message += '\n\n失败详情：\n' + '\n'.join(fail_messages)
     
     return jsonify({'success': True, 'message': message})
+
+@bp.route('/api/all_ids')
+def api_all_ids():
+    """API：获取当前筛选条件下的所有单据ID"""
+    keyword = request.args.get('keyword', '')
+    status = request.args.get('status', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+
+    query = IncomeOrder.query
+
+    if keyword:
+        query = query.filter(
+            db.or_(
+                IncomeOrder.code.like(f'%{keyword}%'),
+                IncomeOrder.customer.has(Customer.name.like(f'%{keyword}%'))
+            )
+        )
+    if status:
+        query = query.filter(IncomeOrder.status == status)
+    if date_from:
+        try:
+            query = query.filter(IncomeOrder.order_date >= datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            query = query.filter(IncomeOrder.order_date <= datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+
+    ids = [r.id for r in query.with_entities(IncomeOrder.id).all()]
+    return jsonify({'ids': ids, 'total': len(ids)})
+
 
 @bp.route('/api/available_orders')
 def api_available_orders():

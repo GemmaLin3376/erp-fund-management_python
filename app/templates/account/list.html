@@ -17,6 +17,7 @@
         </div>
         
         <!-- 数据表格 -->
+        <div class="table-responsive">
         <table class="table">
             <thead>
                 <tr>
@@ -45,41 +46,57 @@
                 {% endfor %}
             </tbody>
         </table>
-        
-        <!-- 分页 -->
-        {% if pagination.pages > 1 %}
-        <div class="pagination">
-            {% if pagination.has_prev %}
-                <a href="{{ url_for('account.list_accounts', page=pagination.prev_num, keyword=keyword) }}">上一页</a>
-            {% else %}
-                <span class="disabled">上一页</span>
-            {% endif %}
-            
-            {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
-                {% if page_num %}
-                    {% if page_num == pagination.page %}
-                        <span class="current">{{ page_num }}</span>
-                    {% else %}
-                        <a href="{{ url_for('account.list_accounts', page=page_num, keyword=keyword) }}">{{ page_num }}</a>
-                    {% endif %}
-                {% else %}
-                    <span class="disabled">...</span>
-                {% endif %}
-            {% endfor %}
-            
-            {% if pagination.has_next %}
-                <a href="{{ url_for('account.list_accounts', page=pagination.next_num, keyword=keyword) }}">下一页</a>
-            {% else %}
-                <span class="disabled">下一页</span>
-            {% endif %}
         </div>
-        {% endif %}
+        
+        <!-- 分页栏 -->
+        <div class="pagination-bar">
+            <div class="per-page-selector">
+                每页显示：
+                <select onchange="changePerPage(this.value)">
+                    <option value="5" {{ 'selected' if pagination.per_page == 5 else '' }}>5条</option>
+                    <option value="10" {{ 'selected' if pagination.per_page == 10 else '' }}>10条</option>
+                    <option value="20" {{ 'selected' if pagination.per_page == 20 else '' }}>20条</option>
+                    <option value="50" {{ 'selected' if pagination.per_page == 50 else '' }}>50条</option>
+                </select>
+            </div>
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                    <a href="{{ url_for('account.list_accounts', page=pagination.prev_num, per_page=pagination.per_page, keyword=keyword) }}">上一页</a>
+                {% else %}
+                    <span class="disabled">上一页</span>
+                {% endif %}
+                {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                            <span class="current">{{ page_num }}</span>
+                        {% else %}
+                            <a href="{{ url_for('account.list_accounts', page=page_num, per_page=pagination.per_page, keyword=keyword) }}">{{ page_num }}</a>
+                        {% endif %}
+                    {% else %}
+                        <span class="disabled">...</span>
+                    {% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                    <a href="{{ url_for('account.list_accounts', page=pagination.next_num, per_page=pagination.per_page, keyword=keyword) }}">下一页</a>
+                {% else %}
+                    <span class="disabled">下一页</span>
+                {% endif %}
+            </div>
+            <div class="pagination-info">共 {{ pagination.total }} 条，第 {{ pagination.page }}/{{ pagination.pages }} 页</div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+function changePerPage(val) {
+    var url = new URL(window.location.href);
+    url.searchParams.set('per_page', val);
+    url.searchParams.set('page', 1);
+    window.location.href = url.toString();
+}
+
 function search() {
     var keyword = document.getElementById('keyword').value;
     window.location.href = "{{ url_for('account.list_accounts') }}?keyword=" + encodeURIComponent(keyword);

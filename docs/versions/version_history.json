@@ -65,6 +65,14 @@
         "changes": "新增首页流程图规范：三步业务流程图、SVG渐变箭头、快捷入口命名与导航栏一致",
         "author": "系统",
         "file": "docs\\versions\\requirements_V1.7_a7c0cd80.md"
+      },
+      {
+        "version": "V1.8",
+        "hash": "6e7f459e",
+        "timestamp": "2026-04-02 14:23:36",
+        "changes": "其他收入单页面交互优化",
+        "author": "系统自动",
+        "file": "docs\\versions\\requirements_V1.8_6e7f459e.md"
       }
     ]
   }

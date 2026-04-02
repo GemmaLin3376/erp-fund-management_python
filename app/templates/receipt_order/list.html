@@ -71,6 +71,7 @@
         </div>
         
         <!-- 数据表格 -->
+        <div class="table-responsive">
         <table class="table" id="orderTable">
             <thead>
                 <tr>
@@ -120,41 +121,203 @@
                 {% endfor %}
             </tbody>
         </table>
-        
-        <!-- 分页 -->
-        {% if pagination.pages > 1 %}
-        <div class="pagination">
-            {% if pagination.has_prev %}
-                <a href="{{ url_for('receipt_order.list_orders', page=pagination.prev_num, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">上一页</a>
-            {% else %}
-                <span class="disabled">上一页</span>
-            {% endif %}
-            
-            {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
-                {% if page_num %}
-                    {% if page_num == pagination.page %}
-                        <span class="current">{{ page_num }}</span>
-                    {% else %}
-                        <a href="{{ url_for('receipt_order.list_orders', page=page_num, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">{{ page_num }}</a>
-                    {% endif %}
-                {% else %}
-                    <span class="disabled">...</span>
-                {% endif %}
-            {% endfor %}
-            
-            {% if pagination.has_next %}
-                <a href="{{ url_for('receipt_order.list_orders', page=pagination.next_num, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">下一页</a>
-            {% else %}
-                <span class="disabled">下一页</span>
-            {% endif %}
         </div>
-        {% endif %}
+        
+        <!-- 分页栏 -->
+        <div class="pagination-bar">
+            <div class="per-page-selector">
+                每页显示：
+                <select onchange="changePerPage(this.value)">
+                    <option value="5" {{ 'selected' if pagination.per_page == 5 else '' }}>5条</option>
+                    <option value="10" {{ 'selected' if pagination.per_page == 10 else '' }}>10条</option>
+                    <option value="20" {{ 'selected' if pagination.per_page == 20 else '' }}>20条</option>
+                    <option value="50" {{ 'selected' if pagination.per_page == 50 else '' }}>50条</option>
+                </select>
+            </div>
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                    <a href="{{ url_for('receipt_order.list_orders', page=pagination.prev_num, per_page=pagination.per_page, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">上一页</a>
+                {% else %}
+                    <span class="disabled">上一页</span>
+                {% endif %}
+                
+                {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                            <span class="current">{{ page_num }}</span>
+                        {% else %}
+                            <a href="{{ url_for('receipt_order.list_orders', page=page_num, per_page=pagination.per_page, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">{{ page_num }}</a>
+                        {% endif %}
+                    {% else %}
+                        <span class="disabled">...</span>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                    <a href="{{ url_for('receipt_order.list_orders', page=pagination.next_num, per_page=pagination.per_page, keyword=keyword, income_order_code=income_order_code, status=status, date_from=date_from, date_to=date_to) }}">下一页</a>
+                {% else %}
+                    <span class="disabled">下一页</span>
+                {% endif %}
+            </div>
+            <div class="pagination-info">共 {{ pagination.total }} 条，第 {{ pagination.page }}/{{ pagination.pages }} 页</div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+function changePerPage(val) {
+    var url = new URL(window.location.href);
+    url.searchParams.set('per_page', val);
+    url.searchParams.set('page', 1);
+    window.location.href = url.toString();
+}
+
+// 获取ID（支持跨页全选）
+function getSelectedIds() {
+    if (isAllPagesSelected) {
+        return allPagesIds.slice();
+    }
+    var ids = [];
+    document.querySelectorAll('.row-checkbox:checked').forEach(function(cb) {
+        ids.push(cb.value);
+    });
+    return ids;
+}
+
+// 获取选中的行数据
+function getSelectedRows() {
+    var rows = [];
+    document.querySelectorAll('.row-checkbox:checked').forEach(function(cb) {
+        var tr = cb.closest('tr');
+        rows.push({ id: cb.value, status: tr.dataset.status });
+    });
+    return rows;
+}
+
+// 更新选中计数
+function updateSelectedCount() {
+    var count = isAllPagesSelected ? allPagesIds.length : document.querySelectorAll('.row-checkbox:checked').length;
+    document.getElementById('selectedCount').textContent = '已选 ' + count + ' 条';
+}
+
+// 跨页全选状态（使用 sessionStorage 持久化）
+var allPagesIds = [];
+var isAllPagesSelected = false;
+
+// 从 sessionStorage 恢复状态
+function restoreSelectionState() {
+    var saved = sessionStorage.getItem('receipt_order_all_selected');
+    if (saved) {
+        var data = JSON.parse(saved);
+        allPagesIds = data.ids || [];
+        isAllPagesSelected = data.isAllPagesSelected || false;
+        if (isAllPagesSelected) {
+            document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+                cb.checked = true;
+                cb.closest('tr').classList.add('selected');
+            });
+            document.getElementById('selectAll').checked = true;
+            document.getElementById('headerSelectAll').checked = true;
+            updateSelectedCount();
+        }
+    }
+}
+
+// 保存状态到 sessionStorage
+function saveSelectionState() {
+    sessionStorage.setItem('receipt_order_all_selected', JSON.stringify({
+        ids: allPagesIds,
+        isAllPagesSelected: isAllPagesSelected
+    }));
+}
+
+// 清除状态
+function clearSelectionState() {
+    sessionStorage.removeItem('receipt_order_all_selected');
+}
+
+// 全选/取消全选（所有页）
+function toggleSelectAll() {
+    var selectAll = document.getElementById('selectAll').checked;
+    var headerSelectAll = document.getElementById('headerSelectAll').checked;
+    
+    if (event && event.target && event.target.id === 'selectAll') {
+        document.getElementById('headerSelectAll').checked = selectAll;
+    } else if (event && event.target && event.target.id === 'headerSelectAll') {
+        selectAll = headerSelectAll;
+        document.getElementById('selectAll').checked = selectAll;
+    } else {
+        document.getElementById('headerSelectAll').checked = selectAll;
+    }
+    
+    if (selectAll) {
+        // 全选所有页
+        var url = new URL(window.location.href);
+        var params = new URLSearchParams({
+            keyword: url.searchParams.get('keyword') || '',
+            income_order_code: url.searchParams.get('income_order_code') || '',
+            status: url.searchParams.get('status') || '',
+            date_from: url.searchParams.get('date_from') || '',
+            date_to: url.searchParams.get('date_to') || ''
+        });
+        fetch("{{ url_for('receipt_order.api_all_ids') }}?" + params.toString())
+        .then(r => r.json())
+        .then(data => {
+            allPagesIds = data.ids;
+            isAllPagesSelected = true;
+            saveSelectionState();
+            document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+                cb.checked = true;
+                cb.closest('tr').classList.add('selected');
+            });
+            updateSelectedCount();
+        });
+    } else {
+        // 取消全选
+        isAllPagesSelected = false;
+        allPagesIds = [];
+        clearSelectionState();
+        document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+            cb.checked = false;
+            cb.closest('tr').classList.remove('selected');
+        });
+        updateSelectedCount();
+    }
+}
+
+// 行复选框变化处理
+function handleRowCheckboxChange() {
+    // 取消跨页全选状态
+    if (isAllPagesSelected) {
+        isAllPagesSelected = false;
+        allPagesIds = [];
+        clearSelectionState();
+    }
+    var tr = this.closest('tr');
+    if (this.checked) { tr.classList.add('selected'); }
+    else { tr.classList.remove('selected'); }
+    var allChecked = document.querySelectorAll('.row-checkbox').length === document.querySelectorAll('.row-checkbox:checked').length;
+    document.getElementById('selectAll').checked = allChecked;
+    document.getElementById('headerSelectAll').checked = allChecked;
+    updateSelectedCount();
+}
+
+// 绑定行复选框事件
+function bindRowCheckboxEvents() {
+    document.querySelectorAll('.row-checkbox').forEach(function(cb) {
+        cb.removeEventListener('change', handleRowCheckboxChange);
+        cb.addEventListener('change', handleRowCheckboxChange);
+    });
+}
+
+// 初始化绑定
+bindRowCheckboxEvents();
+
+// 页面加载时恢复跨页全选状态
+restoreSelectionState();
+
 function search() {
     var keyword = document.getElementById('keyword').value;
     var income_order_code = document.getElementById('income_order_code').value;
@@ -180,93 +343,6 @@ document.getElementById('keyword').addEventListener('keypress', function(e) {
         search();
     }
 });
-
-// 全选/取消全选
-function toggleSelectAll() {
-    // 获取触发事件的复选框状态
-    var selectAll = document.getElementById('selectAll').checked;
-    var headerSelectAll = document.getElementById('headerSelectAll').checked;
-    
-    // 如果点击的是批量操作栏的全选
-    if (event && event.target && event.target.id === 'selectAll') {
-        document.getElementById('headerSelectAll').checked = selectAll;
-    }
-    // 如果点击的是表头的全选
-    else if (event && event.target && event.target.id === 'headerSelectAll') {
-        selectAll = headerSelectAll;
-        document.getElementById('selectAll').checked = selectAll;
-    }
-    // 如果都不是（直接调用函数），以批量操作栏的全选为准
-    else {
-        document.getElementById('headerSelectAll').checked = selectAll;
-    }
-    
-    var checkboxes = document.querySelectorAll('.row-checkbox');
-    checkboxes.forEach(function(cb) {
-        cb.checked = selectAll;
-        // 同步行选中样式
-        var tr = cb.closest('tr');
-        if (selectAll) {
-            tr.classList.add('selected');
-        } else {
-            tr.classList.remove('selected');
-        }
-    });
-    updateSelectedCount();
-}
-
-// 行复选框变化处理
-function handleRowCheckboxChange() {
-    var tr = this.closest('tr');
-    if (this.checked) {
-        tr.classList.add('selected');
-    } else {
-        tr.classList.remove('selected');
-    }
-    // 同步两个全选框状态
-    var allChecked = document.querySelectorAll('.row-checkbox').length === document.querySelectorAll('.row-checkbox:checked').length;
-    document.getElementById('selectAll').checked = allChecked;
-    document.getElementById('headerSelectAll').checked = allChecked;
-    updateSelectedCount();
-}
-
-// 绑定行复选框事件
-function bindRowCheckboxEvents() {
-    document.querySelectorAll('.row-checkbox').forEach(function(cb) {
-        cb.removeEventListener('change', handleRowCheckboxChange);
-        cb.addEventListener('change', handleRowCheckboxChange);
-    });
-}
-
-// 初始化绑定
-bindRowCheckboxEvents();
-
-function updateSelectedCount() {
-    var count = document.querySelectorAll('.row-checkbox:checked').length;
-    document.getElementById('selectedCount').textContent = '已选 ' + count + ' 条';
-}
-
-// 获取选中的ID
-function getSelectedIds() {
-    var ids = [];
-    document.querySelectorAll('.row-checkbox:checked').forEach(function(cb) {
-        ids.push(cb.value);
-    });
-    return ids;
-}
-
-// 获取选中的行数据（包含状态）
-function getSelectedRows() {
-    var rows = [];
-    document.querySelectorAll('.row-checkbox:checked').forEach(function(cb) {
-        var tr = cb.closest('tr');
-        rows.push({
-            id: cb.value,
-            status: tr.dataset.status
-        });
-    });
-    return rows;
-}
 
 // 审核单据
 function auditOrder(id, code) {

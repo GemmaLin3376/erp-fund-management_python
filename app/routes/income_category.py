@@ -9,7 +9,7 @@ bp = Blueprint('income_category', __name__)
 def list_categories():
     """收入类别列表页"""
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
     keyword = request.args.get('keyword', '')
     
     query = IncomeCategory.query

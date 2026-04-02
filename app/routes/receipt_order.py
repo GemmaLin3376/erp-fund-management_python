@@ -11,7 +11,7 @@ bp = Blueprint('receipt_order', __name__)
 def list_orders():
     """收款单列表页"""
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 10, type=int)
+    per_page = request.args.get('per_page', 5, type=int)
     keyword = request.args.get('keyword', '')
     status = request.args.get('status', '')
     date_from = request.args.get('date_from', '')
@@ -393,6 +393,43 @@ def copy_order(id):
     db.session.commit()
     
     return jsonify({'success': True, 'message': '复制成功', 'new_code': code})
+
+@bp.route('/api/all_ids')
+def api_all_ids():
+    """API：获取当前筛选条件下的所有单据ID"""
+    keyword = request.args.get('keyword', '')
+    status = request.args.get('status', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    income_order_code = request.args.get('income_order_code', '')
+
+    query = ReceiptOrder.query
+
+    if keyword:
+        query = query.filter(
+            db.or_(
+                ReceiptOrder.code.like(f'%{keyword}%'),
+                ReceiptOrder.customer.has(Customer.name.like(f'%{keyword}%'))
+            )
+        )
+    if status:
+        query = query.filter(ReceiptOrder.status == status)
+    if date_from:
+        try:
+            query = query.filter(ReceiptOrder.order_date >= datetime.strptime(date_from, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            query = query.filter(ReceiptOrder.order_date <= datetime.strptime(date_to, '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    if income_order_code:
+        query = query.join(ReceiptOrderLine).join(IncomeOrder).filter(IncomeOrder.code.like(f'%{income_order_code}%'))
+
+    ids = [r.id for r in query.with_entities(ReceiptOrder.id).all()]
+    return jsonify({'ids': ids, 'total': len(ids)})
+
 
 @bp.route('/batch', methods=['POST'])
 def batch_operation():
