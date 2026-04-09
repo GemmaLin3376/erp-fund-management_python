@@ -8,8 +8,12 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
-    db.init_app(app)
+    # 启用模板缓存（生产环境）
+    app.jinja_env.auto_reload = False
+    app.config['TEMPLATES_AUTO_RELOAD'] = False
     
+    db.init_app(app)
+ 
     from app.routes import customer, income_category, account, income_order, receipt_order, main
     
     app.register_blueprint(main.bp)
